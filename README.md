@@ -1,231 +1,119 @@
-# 📄 PDF Generator
+# Resume Image to PDF Generator
 
-A simple Python-based tool to convert **Markdown**, **HTML** (raw strings, local files, or URLs) into professional **PDF documents**.
+This project turns a resume design image into a printable HTML resume and a PDF.
+It uses a vision-capable LLM to reproduce the layout as HTML, then uses
+[WeasyPrint](https://weasyprint.org/) to render the HTML at a fixed page size.
 
----
+## How It Works
 
-## ✨ Features
+1. Read a reference resume image from `image_folder`.
+2. Encode the image as Base64.
+3. Send the image and a resume-generation prompt to the configured LLM API.
+4. Save the generated HTML to `output/index/index.html`.
+5. Render that HTML to `output/pdf/output.pdf` with a 1000 x 1400 pixel page and zero margins.
 
-- ✅ Convert **Markdown files (.md)** to PDF
-- ✅ Convert **HTML strings** directly to PDF
-- ✅ Generate PDF from **local HTML files**
-- ✅ Create PDF from **URLs/websites**
-- ✅ Customizable page size (A4, Letter, Legal, etc.)
-- ✅ Set margins for proper document spacing
-- ✅ Add page numbers to your PDF
-- ✅ Support for landscape orientation
-- ✅ Extra wkhtmltopdf options for advanced customization
+The complete workflow is stored in [`resume.ipynb`](resume.ipynb).
 
----
+## Requirements
 
-## 📦 Requirements
+- Python 3.10 or newer
+- A working internet connection for the LLM API request
+- An accessible LLM endpoint that accepts the request format used by the notebook
+- Python packages listed in [`requirements.txt`](requirements.txt)
 
-```bash
-pip install markdown>=3.5 pdfkit>=1.0 Pygments>=2.16
+Install the dependencies in a virtual environment:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-**Note:** You also need **wkhtmltopdf** installed on your system:
+The notebook also imports `requests` and `weasyprint`. If they are not already
+listed in the requirements file, install them explicitly:
 
-### Windows
-- Download from: https://wkhtmltopdf.org/downloads.html
-- Install and ensure `wkhtmltopdf.exe` is in your `PATH`, OR specify the path when converting.
-- Default locations checked:
-  - `C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe`
-  - `C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe`
-
----
-
-## 🚀 Quick Start
-
-### Example 1: Convert a Markdown file to PDF
-
-```python
-from html_to_pdf import html_to_pdf
-
-# Create PDF from your markdown file
-html_text = """
-# Sample Document
-
-This is a sample document.
-"""
-
-result = html_to_pdf(html_text, "output.pdf")
-print(f"PDF created: {result}")
+```powershell
+python -m pip install requests weasyprint
 ```
 
-### Example 2: Convert an HTML string to PDF
+## Usage
 
-```python
-html_string = """
-<html>
-<head>
-    <style>
-        body { font-family: Arial; }
-        h1 { color: navy; }
-    </style>
-</head>
-<body>
-    <h1>Welcome!</h1>
-    <p>This is a styled PDF document.</p>
-</body>
-</html>
-"""
+1. Open `resume.ipynb` in VS Code or Jupyter.
+2. Select the virtual environment containing the installed dependencies.
+3. Put the reference image at `image_folder\res-2.jpg`, or update the image path in the second cell.
+4. Run the cells from top to bottom.
+5. Inspect the generated files:
 
-html_to_pdf(html_string, "styled.pdf")
-```
+   - HTML: `output/index/index.html`
+   - PDF: `output/pdf/output.pdf`
 
-### Example 3: Convert from an HTML file
+The generated HTML is also useful for checking or manually refining the layout
+before creating the PDF again.
 
-```python
-html_to_pdf("index.html", "from_file.pdf")
-```
+## Configuration
 
-### Example 4: Convert a URL to PDF
+The main settings are in the notebook:
 
-```python
-html_to_pdf("https://example.com", "website.pdf")
-```
+| Setting | Purpose |
+| --- | --- |
+| `url` | LLM API endpoint used to generate the HTML |
+| `image_path` | Reference resume image path |
+| `PAGE_WIDTH_PX` | PDF page width, default `1000` |
+| `PAGE_HEIGHT_PX` | PDF page height, default `1400` |
+| `SCALE` | CSS scale applied during PDF rendering, default `1.0` |
+| `INPUT_FILE` | Generated HTML input path |
+| `OUTPUT_FILE` | Generated PDF output path |
 
----
+The API currently receives the image as `image_b64` and the prompt with
+`image_understanding` set to `True`. Configure authentication in the request
+headers if the API requires it. Do not commit API keys or other credentials to
+the notebook.
 
-## 🔧 Function API
+## Project Structure
 
-```python
-def html_to_pdf(
-    source: str,          # HTML string, file path, or URL
-    output_path: str = "output.pdf",   # Output PDF filename
-    page_size: str = "A4",            # Page size: A4, Letter, Legal, etc.
-    margins: str = "18mm",            # CSS-style margin (e.g., "1in", "0.5cm")
-    page_numbers: bool = False,       # Add page numbers to footer
-    landscape: bool = False,          # Use landscape orientation
-    wkhtmltopdf_path: str = None,    # Optional path to wkhtmltopdf.exe
-    extra_options: dict = None        # Additional wkhtmltopdf options
-) -> Path:
-```
-
-### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `source` | `str` | HTML string, local file path, or URL |
-| `output_path` | `str` | Output PDF filename/directory |
-| `page_size` | `str` | Page size (`A4`, `Letter`, `Legal`, etc.) |
-| `margins` | `str` | Margin value (e.g., `"18mm"`, `"1in"`) |
-| `page_numbers` | `bool` | Add "Page X of Y" footer |
-| `landscape` | `bool` | Use landscape orientation |
-| `wkhtmltopdf_path` | `str` | Optional explicit path to wkhtmltopdf.exe |
-| `extra_options` | `dict` | Additional wkhtmltopdf configuration options |
-
-### Example with custom options
-
-```python
-html_to_pdf(
-    "<h1>Title</h1><p>Content</p>",
-    "styled_output.pdf",
-    page_size="A4",
-    margins="0.5in",
-    page_numbers=True,
-    landscape=False,
-    extra_options={
-        "footer-right": "[date]",        # Show date on footer right
-        "disable-smart-shrinking": None  # Disable shrinking
-    }
-)
-```
-
----
-
-## 🖥️ Command Line Usage
-
-Run from the command line:
-
-```bash
-python html_to_pdf.py file.md -o output.pdf
-python html_to_pdf.py https://example.com -o website.pdf --page-size A4
-python html_to_pdf.py document.html -o myfile.pdf --landscape --page-numbers
-```
-
-Options:
-
-```
-html_to_pdf.py: convert HTML (string, file, or URL) to PDF
-
-positional arguments:
-  source         HTML file path or URL
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -o OUTPUT, --output OUTPUT
-                        Output PDF path (default: output.pdf)
-  --page-size PAGE_SIZE
-                        Page size (e.g. A4, Letter)
-  --landscape           Use landscape orientation
-  --page-numbers        Enable page numbers in footer
-```
-
----
-
-## 📝 Supported Formats
-
-| Input Type | Description |
-|------------|-------------|
-|.md files | Markdown documents |
-|.html/.htm files | Local HTML files |
-| Raw HTML strings | Direct HTML content |
-|URLs|Websites and web pages |
-
----
-
-## 🔍 Troubleshooting
-
-### "wkhtmltopdf not found" Error
-
-Make sure wkhtmltopdf is installed:
-
-1. Visit https://wkhtmltopdf.org/downloads.html
-2. Download and install the official patched version
-3. Add to PATH or specify path explicitly via `wkhtmltopdf_path` parameter
-
-### Single-Page/Poor Quality PDFs
-
-This may be caused by using an unpatched (distro-packaged) wkhtmltopdf build:
-
-```bash
-# Check current wkhtmltopdf version
-wkhtmltopdf --version
-
-# You should see "(with patched qt)" in the output
-```
-
-If not shown, install the [official patched build](https://wkhtmltopdf.org/downloads.html).
-
-### Common Issues
-
-- **Images not showing**: Use absolute paths or `enable-local-file-access` option
-- **Links don't work**: URLs are converted directly; relative links may break when converting local files
-
----
-
-## 📂 Project Structure
-
-```
+```text
 pdf generator/
-├── html_to_pdf.py     # Main conversion module
-├── requirements.txt   # Python dependencies
-├── input.md           # Sample Markdown (resume)
-├── index.html         # Sample HTML file
-├── output.pdf         # Generated PDF output
-└── env/               # Python virtual environment
+├── image_folder/
+│   └── res-2.jpg              # Reference resume design
+├── output/
+│   ├── index/
+│   │   └── index.html         # LLM-generated resume HTML
+│   └── pdf/
+│       └── output.pdf         # Rendered resume PDF
+├── requirements.txt
+├── resume.ipynb               # End-to-end workflow
+└── README.md
 ```
 
----
+## Troubleshooting
 
-## 📄 License
+### The API request fails
 
-MIT License - Feel free to use this tool for personal or commercial projects.
+Check the endpoint URL, network connection, request payload, and any required
+authentication headers. The notebook currently returns `response.text`, so the
+API response should be inspected before writing it to the HTML file.
 
----
+### The output contains Markdown fences
 
-## 🤝 Contributing
+The notebook removes an opening ```` ```html ```` fence and the final closing
+fence when the model returns fenced HTML. The prompt also asks the model to
+return HTML only.
 
-Feel free to fork and submit issues or pull requests!
+### Images or styles are missing in the PDF
+
+Use paths that are available to WeasyPrint and keep important styles inline or
+in accessible local files. Check `output/index/index.html` in a browser first
+to separate HTML/CSS issues from PDF-rendering issues.
+
+### The PDF is clipped or has unexpected whitespace
+
+Adjust `PAGE_WIDTH_PX`, `PAGE_HEIGHT_PX`, or `SCALE` in the final notebook cell.
+The current CSS intentionally removes outer margins and padding from common
+resume wrapper elements.
+
+## Security and Privacy
+
+Resume images may contain personal information. Review the privacy policy of
+the configured LLM service before sending images to it, and avoid storing API
+credentials or sensitive generated data in source control.
